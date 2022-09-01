@@ -1,6 +1,7 @@
 package perf
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"math/rand"
@@ -20,13 +21,15 @@ func Execute(b Batch) {
 	batchNo := 1
 	totalBatches := 10
 
-	valueSizes := []int{32, 64, 128, 512, 1024, 2048, 4096}
+	valueSizes := []int{0}
 	batchLengths := []int{1, 10, 50, 100, 500, 1000, 2000, 4000, 6000, 8000, 10000}
 	// batchLengths := []int{1, 10, 50, 100}
 
 	var key []byte
 	var keysSize int
-	var totalSize uint64
+	var totalSize float64
+
+	h := sha256.New()
 
 	for _, valueSize := range valueSizes {
 		value := make([]byte, valueSize)
@@ -35,15 +38,22 @@ func Execute(b Batch) {
 			for i := batchNo; i < totalBatches; i++ {
 				for j := 0; j < batchLength; j++ {
 					key = []byte("v" + strconv.Itoa(valueSize) + "bl" + strconv.Itoa(batchLength) + "bn" + strconv.Itoa(i) + "b" + strconv.Itoa(j))
-					_, err := rand.Read(value)
-					if err != nil {
-						log.Fatal(err)
-						return
+					h.Write(key)
+					keyHash := h.Sum(nil)
+
+					if valueSize != 0 {
+						_, err := rand.Read(value)
+						if err != nil {
+							log.Fatal(err)
+							return
+						}
+					} else {
+						value = nil
 					}
 
-					keysSize += len(key)
+					keysSize += len(keyHash)
 
-					if err = b.Put(key, value); err != nil {
+					if err := b.Put(keyHash, value); err != nil {
 						log.Fatal(err)
 						return
 					}
@@ -56,13 +66,13 @@ func Execute(b Batch) {
 				}
 				log.Printf("Time taken to commit %d #KV pairs with valueSize %d and average key size %d bytes is %d", batchLength, valueSize, keysSize/batchLength, time.Since(start).Milliseconds())
 
-				totalSize += uint64(keysSize) + uint64(valueSize*batchLength)
+				totalSize += float64(keysSize) + float64(valueSize*batchLength)
 				keysSize = 0
 			}
 		}
 	}
 
-	b.SetWrittenSize(totalSize)
+	b.SetWrittenSize(uint64(totalSize))
 }
 
 func DirSizeMB(path string) float64 {
