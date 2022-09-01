@@ -15,6 +15,7 @@ type Batch interface {
 	Put(key []byte, value []byte) error
 	Commit() error
 	SetWrittenSize(size uint64)
+	Get(key []byte) ([]byte, error)
 }
 
 func Execute(b Batch) {
@@ -71,6 +72,23 @@ func Execute(b Batch) {
 			}
 		}
 	}
+
+	start := time.Now()
+	for _, valueSize := range valueSizes {
+		for _, batchLength := range batchLengths {
+			fmt.Println("")
+			for i := batchNo; i < totalBatches; i++ {
+				for j := 0; j < batchLength; j++ {
+					key = []byte("v" + strconv.Itoa(valueSize) + "bl" + strconv.Itoa(batchLength) + "bn" + strconv.Itoa(i) + "b" + strconv.Itoa(j))
+					h.Write(key)
+					keyHash := h.Sum(nil)
+
+					_, _ = b.Get(keyHash)
+				}
+			}
+		}
+	}
+	log.Printf("Time taken to read %d", time.Since(start).Milliseconds())
 
 	b.SetWrittenSize(uint64(totalSize))
 }

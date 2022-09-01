@@ -46,6 +46,10 @@ func (c *batchCommitter) Commit() error {
 	return nil
 }
 
+func (c *batchCommitter) Get(key []byte) ([]byte, error) {
+	return c.db.Get(key, &opt.ReadOptions{})
+}
+
 func (c *batchCommitter) SetWrittenSize(size uint64) {
 	c.totalSize = size / (1024 * 1024)
 }

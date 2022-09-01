@@ -18,6 +18,7 @@ func main() {
 
 	bc := &batchCommitter{
 		batch: db.NewBatch(),
+		db:    db,
 	}
 
 	perf.Execute(bc)
@@ -27,6 +28,7 @@ func main() {
 
 type batchCommitter struct {
 	batch     *pebble.Batch
+	db        *pebble.DB
 	totalSize uint64
 }
 
@@ -41,6 +43,11 @@ func (c *batchCommitter) Commit() error {
 
 	c.batch.Reset()
 	return nil
+}
+
+func (c *batchCommitter) Get(key []byte) ([]byte, error) {
+	v, _, err := c.db.Get(key)
+	return v, err
 }
 
 func (c *batchCommitter) SetWrittenSize(size uint64) {

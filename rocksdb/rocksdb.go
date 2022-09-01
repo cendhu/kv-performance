@@ -13,7 +13,7 @@ func main() {
 	os.RemoveAll("demo")
 
 	bbto := grocksdb.NewDefaultBlockBasedTableOptions()
-	// bbto.SetBlockCache(grocksdb.NewLRUCache(3 << 30))
+	bbto.SetBlockCache(grocksdb.NewLRUCache(3 << 30))
 
 	opts := grocksdb.NewDefaultOptions()
 	opts.SetBlockBasedTableFactory(bbto)
@@ -27,10 +27,13 @@ func main() {
 	wo := grocksdb.NewDefaultWriteOptions()
 	wo.SetSync(true)
 
+	ro := grocksdb.NewDefaultReadOptions()
+
 	bc := &batchCommitter{
 		db:    db,
 		batch: grocksdb.NewWriteBatch(),
 		wo:    wo,
+		ro:    ro,
 	}
 
 	perf.Execute(bc)
@@ -42,6 +45,7 @@ type batchCommitter struct {
 	db        *grocksdb.DB
 	batch     *grocksdb.WriteBatch
 	wo        *grocksdb.WriteOptions
+	ro        *grocksdb.ReadOptions
 	totalSize uint64
 }
 
@@ -57,6 +61,11 @@ func (c *batchCommitter) Commit() error {
 
 	c.batch.Clear()
 	return nil
+}
+
+func (c *batchCommitter) Get(key []byte) ([]byte, error) {
+	r, err := c.db.Get(c.ro, key)
+	return r.Data(), err
 }
 
 func (c *batchCommitter) SetWrittenSize(size uint64) {
